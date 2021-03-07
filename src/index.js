@@ -4,7 +4,12 @@ import Busboy from 'busboy';
 import processImage from './process-image.js';
 
 const server = createServer((req, res) => {
-    if (req.method === 'GET') res.end();
+    if (req.method === 'GET') {
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.setHeader('Connection', 'close');
+        res.end();
+    }
+
     if (req.method === 'POST') {
         let fileBuffer;
         let fileName;
