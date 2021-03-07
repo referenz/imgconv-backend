@@ -1,0 +1,25 @@
+{
+  "name": "imgconv-backend",
+  "version": "0.0.1",
+  "description": "",
+  "main": "src/index.js",
+  "type": "module",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Thomas Schüler",
+  "license": "MIT",
+  "devDependencies": {
+    "eslint": "^7.21.0",
+    "eslint-config-prettier": "^8.1.0",
+    "eslint-plugin-prettier": "^3.3.1",
+    "prettier": "^2.2.1"
+  },
+  "dependencies": {
+    "@wasm-codecs/oxipng": "^1.0.1",
+    "busboy": "^0.3.1",
+    "dotenv": "^8.2.0",
+    "form-data": "^4.0.0",
+    "sharp": "^0.27.2"
+  }
+}

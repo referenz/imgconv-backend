@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fetch test</title>
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            document.getElementById('p1').textContent = "ready"
+
+            document.querySelector('form').addEventListener('submit', (event) => {
+                event.preventDefault();
+
+                let formData = new FormData();
+                formData.append("file", event.target[0].files[0]);
+
+                fetch('http://localhost:3001', {
+                    method: 'POST',
+                    body: formData
+                    })
+                    .then(res => res.text())
+                    .then(data => console.log(data));
+            })
+        })
+    </script>
+</head>
+<body>
+    <h1>Fetch test</h1>
+<div>
+    <p id="p1"></p>
+    <img id="img1" src="" alt="" />
+</div>
+<div>
+    <form method="post" enctype="multipart/form-data">
+        <input type="file" name="Datei" id="dateiid">
+        <br /><br />
+        <input type="submit" value="Absenden">
+</div>
+</body>
+</html>
