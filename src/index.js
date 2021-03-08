@@ -39,5 +39,5 @@ const server = createServer((req, res) => {
 });
 
 dotenv.config();
-server.listen(process.env.PORT ?? 3001, process.env.HOSTNAME);
+server.listen(process.env.PORT ?? 3001, process.env.INTERNAL_HOSTNAME);
 console.log('Server gestartet');
