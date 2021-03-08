@@ -1,9 +1,17 @@
-import { createServer } from 'http';
+import { createServer } from 'https';
+import fs from 'fs';
 import dotenv from 'dotenv';
 import Busboy from 'busboy';
 import processImage from './process-image.js';
 
-const server = createServer((req, res) => {
+dotenv.config();
+
+const httpsOptions = {
+    key: fs.readFileSync(process.env.HTTPS_KEY),
+    cert: fs.readFileSync(process.env.HTTPS_CERT),
+};
+
+const server = createServer(httpsOptions, (req, res) => {
     if (req.method === 'GET') {
         res.setHeader('Access-Control-Allow-Origin', '*');
         res.setHeader('Connection', 'close');
@@ -38,6 +46,5 @@ const server = createServer((req, res) => {
     }
 });
 
-dotenv.config();
 server.listen(process.env.PORT ?? 3001, process.env?.HOSTNAME);
 console.log('Server gestartet');
