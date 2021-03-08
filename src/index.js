@@ -46,5 +46,5 @@ const server = createServer(httpsOptions, (req, res) => {
     }
 });
 
-server.listen(process.env.PORT ?? 3001, process.env?.HOSTNAME);
+server.listen(process.env.PORT ?? 3001);
 console.log('Server gestartet');
