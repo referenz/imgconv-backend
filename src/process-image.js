@@ -114,7 +114,6 @@ export default class processImage {
         manifest['png'] = {
             filesize: pngBuffer.length,
             filename: this.filename + '.png',
-            handle: 'png',
         };
         images.set('png', pngBuffer);
 
