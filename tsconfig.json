@@ -1,0 +1,8 @@
+{
+    "include": ["src/*"],
+    "compilerOptions": {
+        "strict": true,
+        "allowSyntheticDefaultImports": true, 
+        "outDir": "build"
+    }
+}
