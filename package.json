@@ -1,11 +1,13 @@
 {
   "name": "imgconv-backend",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "",
   "main": "src/index.js",
   "type": "module",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "tsc --build",
+    "clean": "tsc --build --clean"
   },
   "author": "Thomas Schüler",
   "license": "MIT",
@@ -26,6 +28,6 @@
     "busboy": "^0.3.1",
     "dotenv": "^8.2.0",
     "form-data": "^4.0.0",
-    "sharp": "^0.27.2"
+    "sharp": "^0.28.0"
   }
 }

@@ -1,29 +1,6 @@
 import sharp from 'sharp';
 import FormData from 'form-data';
-
-interface inputfragment {
-    filename?: string;
-    filetype?: string;
-    filesize?: number;
-}
-
-interface lossyimgdata {
-    filename: string;
-    filesize: string;
-    quality: number;
-}
-
-interface losslessimgdata {
-    filename: string;
-    filesize: number;
-}
-
-type Manifest = {
-    inputfile: inputfragment;
-    png: losslessimgdata;
-    jpegs: Record<string, lossyimgdata>;
-    webps: Record<string, lossyimgdata>;
-};
+import { Manifest, InputData, LossyImgData, LosslessImgData } from './Manifest';
 
 export default class processImage {
     buffer?: Buffer;
@@ -31,10 +8,12 @@ export default class processImage {
     error?: string;
     qualities = [70, 75, 80, 85];
 
-    constructor(args: { buffer?: Buffer; filename?: string; error?: string }) {
-        this.buffer = args?.buffer;
-        this.filename = args?.filename ?? 'file';
-        this.error = args?.error;
+    private constructor(args: { buffer: Buffer; filename: string } | { error: string }) {
+        if ('buffer' in args) {
+            this.buffer = args.buffer;
+            this.filename = args.filename;
+        }
+        if ('error' in args) this.error = args.error;
     }
 
     static fromBuffer(buffer: Buffer, filename: string, filetype: string): processImage {
@@ -49,20 +28,20 @@ export default class processImage {
     /* fromFile(_path) {} */
     /* fromURL(_url) {} */
 
-    toWebP(quality: number): Promise<Buffer> {
+    private toWebP(quality: number): Promise<Buffer> {
         if (quality == undefined) return sharp(this.buffer).webp().toBuffer();
         else return sharp(this.buffer).webp({ quality: quality }).toBuffer();
     }
 
-    async makeWebPs(): Promise<Map<number, Buffer>> {
-        const returnobj: Map<number, Buffer> = new Map();
+    private async makeWebPs(): Promise<Map<number, Buffer>> {
+        const returnobj = new Map<number, Buffer>();
         for (const q of this.qualities) {
             returnobj.set(q, await this.toWebP(q));
         }
         return returnobj;
     }
 
-    async toJPEG(quality: number): Promise<Buffer> {
+    private async toJPEG(quality: number): Promise<Buffer> {
         const encodedJPEG = await sharp(this.buffer)
             .jpeg({
                 quality: quality,
@@ -75,32 +54,32 @@ export default class processImage {
         return encodedJPEG;
     }
 
-    async makeJPEGs(): Promise<Map<number, Buffer>> {
-        const returnobj: Map<number, Buffer> = new Map();
+    private async makeJPEGs(): Promise<Map<number, Buffer>> {
+        const returnobj = new Map<number, Buffer>();
         for (const q of this.qualities) {
             returnobj.set(q, await this.toJPEG(q));
         }
         return returnobj;
     }
 
-    async toPNG(): Promise<Buffer> {
+    private async toPNG(): Promise<Buffer> {
         const encode = await import('@wasm-codecs/oxipng');
         return encode.default(await sharp(this.buffer).png().toBuffer());
     }
 
-    async getFiletype(): Promise<string | undefined> {
+    private async getFiletype(): Promise<string> {
         const meta = await sharp(this.buffer).metadata();
-        return meta.format;
+        return meta.format as string;
     }
 
-    async getFilesize(): Promise<number | undefined> {
+    private async getFilesize(): Promise<number> {
         const meta = await sharp(this.buffer).metadata();
-        return meta.size;
+        return meta.size as number;
     }
 
-    async createImages(): Promise<[Manifest, Map<string, Buffer>]> {
-        const inputfileFragment: inputfragment = {
-            filename: this.filename,
+    private async createImages(): Promise<[Manifest, Map<string, Buffer>]> {
+        const inputfileFragment: InputData = {
+            filename: this.filename as string,
             filetype: await this.getFiletype(),
             filesize: await this.getFilesize(),
         };
@@ -108,10 +87,10 @@ export default class processImage {
         const images = new Map<string, Buffer>();
 
         // WebP
-        const webps: Record<string, lossyimgdata> = {};
+        const webps: Record<string, LossyImgData> = {};
         for (const [q, buff] of Object.entries(await this.makeWebPs())) {
             const handle = 'webp-q' + q;
-            const values: lossyimgdata = {
+            const values: LossyImgData = {
                 quality: parseInt(q),
                 filesize: buff.length,
                 filename: this.filename + '-q' + q + '.webp',
@@ -121,10 +100,10 @@ export default class processImage {
         }
 
         // JPEG
-        const jpegs: Record<string, lossyimgdata> = {};
+        const jpegs: Record<string, LossyImgData> = {};
         for (const [q, buff] of Object.entries(await this.makeJPEGs())) {
             const handle = 'jpeg-q' + q;
-            const values: lossyimgdata = {
+            const values: LossyImgData = {
                 quality: parseInt(q),
                 filesize: buff.length,
                 filename: this.filename + '-q' + q + '.jpeg',
@@ -135,14 +114,13 @@ export default class processImage {
 
         // PNG
         const pngBuffer = await this.toPNG();
-        const png = {
+        const png: LosslessImgData = {
             filesize: pngBuffer.length,
             filename: this.filename + '.png',
         };
         images.set('png', pngBuffer);
 
         const manifest: Manifest = { inputfile: inputfileFragment, webps: webps, jpegs: jpegs, png: png };
-
         return [manifest, images];
     }
 
