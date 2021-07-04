@@ -11,15 +11,15 @@ const server = createServer((req, res) => {
     }
 
     if (req.method === 'POST') {
-        let fileBuffer;
-        let fileName;
-        let mimeType;
-        let postData = new Busboy({ headers: req.headers });
+        let fileBuffer: Buffer;
+        let fileName: string;
+        let mimeType: string;
+        const postData = new Busboy({ headers: req.headers });
 
         postData.on('file', (_fieldname, file, filename, _encoding, mimetype) => {
             fileName = filename;
             mimeType = mimetype;
-            let chunks = [];
+            const chunks: Array<Uint8Array> = [];
             file.on('data', chunk => chunks.push(chunk));
             file.on('end', () => (fileBuffer = Buffer.concat(chunks)));
         });
@@ -39,5 +39,5 @@ const server = createServer((req, res) => {
 });
 
 dotenv.config();
-server.listen(process.env.PORT ?? 3001, process.env.INTERNAL_HOSTNAME);
+server.listen(process.env.PORT ? parseInt(process.env.PORT) : 3001, process.env.INTERNAL_HOSTNAME);
 console.log('Server gestartet');
