@@ -62,16 +62,16 @@ export default class processImage {
         return returnobj;
     }
 
-    /*
     private async toPNG(): Promise<Buffer> {
         const encode = await import('@wasm-codecs/oxipng');
         return encode.default(await sharp(this.buffer).png().toBuffer());
     }
-    */
 
+    /*
     private async toPNG(): Promise<Buffer> {
         return await sharp(this.buffer).png().toBuffer();
     }
+    */
 
     private async getFiletype(): Promise<string> {
         const meta = await sharp(this.buffer).metadata();
