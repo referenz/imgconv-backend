@@ -70,7 +70,7 @@ export default class processImage {
     */
 
     private async toPNG(): Promise<Buffer> {
-        return sharp(this.buffer).png().toBuffer();
+        return await sharp(this.buffer).png().toBuffer();
     }
 
     private async getFiletype(): Promise<string> {
@@ -94,27 +94,27 @@ export default class processImage {
 
         // WebP
         const webps: Record<string, LossyImgData> = {};
-        for (const [q, buff] of Object.entries(await this.makeWebPs())) {
+        for (const [q, buff] of await this.makeWebPs()) {
             const handle = 'webp-q' + q;
             const values: LossyImgData = {
-                quality: parseInt(q),
+                quality: q,
                 filesize: buff.length,
                 filename: this.filename + '-q' + q + '.webp',
             };
-            webps.handle = values;
+            webps[handle] = values;
             images.set(handle, buff);
         }
 
         // JPEG
         const jpegs: Record<string, LossyImgData> = {};
-        for (const [q, buff] of Object.entries(await this.makeJPEGs())) {
+        for (const [q, buff] of await this.makeJPEGs()) {
             const handle = 'jpeg-q' + q;
             const values: LossyImgData = {
-                quality: parseInt(q),
+                quality: q,
                 filesize: buff.length,
                 filename: this.filename + '-q' + q + '.jpeg',
             };
-            jpegs.handle = values;
+            jpegs[handle] = values;
             images.set(handle, buff);
         }
 
