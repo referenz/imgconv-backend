@@ -47,7 +47,7 @@ export default class processImage {
                 quality: quality,
                 quantisationTable: 3,
                 optimiseScans: true,
-                trellisQuantisation: true,
+                mozjpeg: true,
                 progressive: true,
             })
             .toBuffer();
