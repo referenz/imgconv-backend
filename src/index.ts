@@ -14,7 +14,7 @@ const server = createServer((req, res) => {
         let fileBuffer: Buffer;
         let fileName: string;
         let mimeType: string;
-        const postData = new Busboy({ headers: req.headers });
+        const postData = new Busboy({ headers: req.headers as { 'content-type': string } });
 
         postData.on('file', (_fieldname, file, filename, _encoding, mimetype) => {
             fileName = filename;
