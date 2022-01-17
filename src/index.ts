@@ -14,13 +14,13 @@ const server = createServer((req, res) => {
         let fileBuffer: Buffer;
         let fileName: string;
         let mimeType: string;
-        const postData = new Busboy({ headers: req.headers as { 'content-type': string } });
+        const postData = Busboy({ headers: req.headers as { 'content-type': string } });
 
-        postData.on('file', (_fieldname, file, filename, _encoding, mimetype) => {
+        postData.on('file', (_fieldname: any, file: any, filename: any, _encoding: any, mimetype: any) => {
             fileName = filename;
             mimeType = mimetype;
             const chunks: Array<Uint8Array> = [];
-            file.on('data', chunk => chunks.push(chunk));
+            file.on('data', (chunk: Uint8Array) => chunks.push(chunk));
             file.on('end', () => (fileBuffer = Buffer.concat(chunks)));
         });
 
