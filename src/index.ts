@@ -16,7 +16,7 @@ const server = createServer((req, res) => {
         let mimeType: string;
         const postData = Busboy({ headers: req.headers as { 'content-type': string } });
 
-        postData.on('file', (_fieldname: any, file: any, filename: any, _encoding: any, mimetype: any) => {
+        postData.on('file', (_fieldname: any, file: any, filename: string, _encoding: any, mimetype: string) => {
             fileName = filename;
             mimeType = mimetype;
             const chunks: Array<Uint8Array> = [];
