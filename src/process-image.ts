@@ -1,12 +1,12 @@
 import sharp from 'sharp';
 import FormData from 'form-data';
-import { Manifest, InputData, LossyImgData, LosslessImgData } from './Manifest';
+import { InputData, LosslessImgData, LossyImgData, Manifest } from './types';
 
 export default class processImage {
-    buffer?: Buffer;
-    filename?: string;
-    error?: string;
-    qualities = [70, 75, 80, 85];
+    private buffer?: Buffer;
+    private filename?: string;
+    private error?: string;
+    private qualities = [70, 75, 80, 85];
 
     private constructor(args: { buffer: Buffer; filename: string } | { error: string }) {
         if ('buffer' in args) {
@@ -62,16 +62,16 @@ export default class processImage {
         return returnobj;
     }
 
+    /*
     private async toPNG(): Promise<Buffer> {
         const encode = await import('@wasm-codecs/oxipng');
         return encode.default(await sharp(this.buffer).png().toBuffer());
     }
+    */
 
-    /*
     private async toPNG(): Promise<Buffer> {
         return await sharp(this.buffer).png().toBuffer();
     }
-    */
 
     private async getFiletype(): Promise<string> {
         const meta = await sharp(this.buffer).metadata();

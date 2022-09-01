@@ -1,7 +1,6 @@
 import { createServer } from 'http';
-import dotenv from 'dotenv';
 import Busboy from 'busboy';
-import processImage from './process-image.js';
+import processImage from './process-image';
 
 const server = createServer((req, res) => {
     if (req.method === 'GET') {
@@ -16,7 +15,7 @@ const server = createServer((req, res) => {
         let mimeType: string;
         const postData = Busboy({ headers: req.headers });
 
-        postData.on('file', (_fieldname: string, file: any, info: Busboy.FileInfo) => {
+        postData.on('file', (_fieldname, file, info) => {
             fileName = info.filename;
             mimeType = info.mimeType;
             const chunks: Array<Uint8Array> = [];
@@ -38,6 +37,5 @@ const server = createServer((req, res) => {
     }
 });
 
-dotenv.config();
-server.listen(process.env.PORT ? parseInt(process.env.PORT) : 3001, process.env.INTERNAL_HOSTNAME);
-console.log('Server gestartet');
+// server.listen(process.env.PORT ? parseInt(process.env.PORT) : 3001, process.env.INTERNAL_HOSTNAME);
+server.listen(3001);
