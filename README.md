@@ -1,3 +1,3 @@
 # ImgConv-Backend
 
-In der Datei .env lassen sich die Variablen PORT und INTERNAL_HOSTNAME festlegen.
+Webserver wartet auf Post-Nachrichten auf Port 3001

@@ -21,6 +21,6 @@
     "parserOptions": {
         "project": "./tsconfig.json",
         /* Kann ggf. raus */
-        "ecmaVersion": 12
+        "ecmaVersion": "latest"
     }
 }
