@@ -74,7 +74,9 @@ export default class ProcessImage {
     */
 
   private async toPNG(): Promise<Buffer> {
-    return await sharp(this.buffer).png().toBuffer();
+    return await sharp(this.buffer)
+      .png({ adaptiveFiltering: true, palette: true, compressionLevel: 9, effort: 8 })
+      .toBuffer();
   }
 
   private async getFiletype(): Promise<string> {
@@ -89,16 +91,16 @@ export default class ProcessImage {
 
   @debugDecorator()
   private async createImages(): Promise<[Manifest, Map<string, Buffer>]> {
-    const inputfileFragment: InputData = {
+    const images = new Map<string, Buffer>();
+    const manifest: Manifest = {};
+
+    manifest['inputfile'] = {
+      filesize: await this.getFilesize(),
       filename: this.filename as string,
       filetype: await this.getFiletype(),
-      filesize: await this.getFilesize(),
     };
 
-    const images = new Map<string, Buffer>();
-
     // WebP
-    const webps: Record<string, LossyImgData> = {};
     for (const [q, buff] of await this.makeWebPs()) {
       const handle = 'webp-q' + q;
       const values: LossyImgData = {
@@ -106,12 +108,20 @@ export default class ProcessImage {
         filesize: buff.length,
         filename: this.filename + '-q' + q + '.webp',
       };
-      webps[handle] = values;
+      manifest[handle] = values;
       images.set(handle, buff);
     }
 
+    // WebP nearlossless
+    const webpLosslessbuffer = await sharp(this.buffer).webp({ nearLossless: true }).toBuffer();
+    const webpLossless: LosslessImgData = {
+      filesize: webpLosslessbuffer.length,
+      filename: this.filename + '-nearLossless.webp',
+    };
+    manifest['webp-nearLossless'] = webpLossless;
+    images.set('webp-nearLossless', webpLosslessbuffer);
+
     // JPEG
-    const jpegs: Record<string, LossyImgData> = {};
     for (const [q, buff] of await this.makeJPEGs()) {
       const handle = 'jpeg-q' + q;
       const values: LossyImgData = {
@@ -119,7 +129,7 @@ export default class ProcessImage {
         filesize: buff.length,
         filename: this.filename + '-q' + q + '.jpeg',
       };
-      jpegs[handle] = values;
+      manifest[handle] = values;
       images.set(handle, buff);
     }
 
@@ -129,9 +139,9 @@ export default class ProcessImage {
       filesize: pngBuffer.length,
       filename: this.filename + '.png',
     };
+    manifest['png'] = png;
     images.set('png', pngBuffer);
 
-    const manifest: Manifest = { inputfile: inputfileFragment, webps: webps, jpegs: jpegs, png: png };
     return [manifest, images];
   }
 
@@ -147,26 +157,10 @@ export default class ProcessImage {
     const [data, images] = await this.createImages();
     formdata.append('manifest', JSON.stringify(data));
 
-    // WebP
-    for (const curr of Object.entries(data.webps)) {
-      formdata.append(
-        'webp-q' + curr[1].quality,
-        'data:image/webp;base64,' + images.get('webp-q' + curr[1].quality)?.toString('base64'),
-        curr[1].filename,
-      );
+    for (const curr in data) {
+      const type = curr.split('-')[0];
+      formdata.append(curr, `data:image/${type};base64,` + images.get(curr)?.toString('base64'), data[curr].filename);
     }
-
-    // JPEG
-    for (const curr of Object.entries(data.jpegs)) {
-      formdata.append(
-        'jpeg-q' + curr[1].quality,
-        'data:image/jpeg;base64,' + images.get('jpeg-q' + curr[1].quality)?.toString('base64'),
-        curr[1].filename,
-      );
-    }
-
-    // PNG
-    formdata.append('png', 'data:image/png;base64,' + images.get('png')?.toString('base64'), data.png.filename);
 
     return [formdata, formdata.getBoundary()];
   }

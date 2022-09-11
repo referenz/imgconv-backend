@@ -12,9 +12,4 @@ export type LossyImgData = IFileInfo & {
 
 export type LosslessImgData = IFileInfo;
 
-export type Manifest = {
-  inputfile: InputData;
-  png: LosslessImgData;
-  jpegs: Record<string, LossyImgData>;
-  webps: Record<string, LossyImgData>;
-};
+export type Manifest = Record<string, IFileInfo | InputData | LossyImgData>;
