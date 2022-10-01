@@ -23,16 +23,16 @@ const server = createServer((req, res) => {
       file.on('end', () => (fileBuffer = Buffer.concat(chunks)));
     });
 
-    postData.on('finish', async () => {
+    postData.on('finish', () => {
       const processedImage = ProcessImage.fromBuffer(fileBuffer, fileName, mimeType);
-      const [output, boundary] = await processedImage.toFormData();
-      res.setHeader('Content-Type', `multipart/form-data; boundary=${boundary}`);
-      res.setHeader('Access-Control-Allow-Origin', '*');
-      res.setHeader('Connection', 'close');
-      output.pipe(res);
-      res.end();
+      void processedImage.toFormData().then(result => {
+        res.setHeader('Content-Type', `multipart/form-data; boundary=${result[1]}`);
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.setHeader('Connection', 'close');
+        result[0].pipe(res);
+        res.end();
+      });
     });
-
     req.pipe(postData);
   }
 });

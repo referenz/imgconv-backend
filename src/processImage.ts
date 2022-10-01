@@ -1,7 +1,6 @@
 import sharp from 'sharp';
 import FormData from 'form-data';
-import { InputData, LosslessImgData, LossyImgData, Manifest } from './types.js';
-import debugDecorator from './debugDecorator.js';
+import { LosslessImgData, LossyImgData, Manifest } from './types.js';
 
 export default class ProcessImage {
   private buffer?: Buffer;
@@ -17,7 +16,6 @@ export default class ProcessImage {
     if ('error' in args) this.error = args.error;
   }
 
-  @debugDecorator()
   static fromBuffer(buffer: Buffer, filename: string, filetype: string): ProcessImage {
     const type = filetype.split('/')[1];
     if (!(type in sharp.format) || sharp.format[type as keyof sharp.FormatEnum].input.buffer === false)
@@ -89,7 +87,6 @@ export default class ProcessImage {
     return meta.size as number;
   }
 
-  @debugDecorator()
   private async createImages(): Promise<[Manifest, Map<string, Buffer>]> {
     const images = new Map<string, Buffer>();
     const manifest: Manifest = {};
@@ -102,11 +99,11 @@ export default class ProcessImage {
 
     // WebP
     for (const [q, buff] of await this.makeWebPs()) {
-      const handle = 'webp-q' + q;
+      const handle = 'webp-q' + q.toString();
       const values: LossyImgData = {
         quality: q,
         filesize: buff.length,
-        filename: this.filename + '-q' + q + '.webp',
+        filename: (this.filename as string) + '-q' + q.toString() + '.webp',
       };
       manifest[handle] = values;
       images.set(handle, buff);
@@ -116,18 +113,18 @@ export default class ProcessImage {
     const webpLosslessbuffer = await sharp(this.buffer).webp({ nearLossless: true }).toBuffer();
     const webpLossless: LosslessImgData = {
       filesize: webpLosslessbuffer.length,
-      filename: this.filename + '-nearLossless.webp',
+      filename: (this.filename as string) + '-nearLossless.webp',
     };
     manifest['webp-nearLossless'] = webpLossless;
     images.set('webp-nearLossless', webpLosslessbuffer);
 
     // JPEG
     for (const [q, buff] of await this.makeJPEGs()) {
-      const handle = 'jpeg-q' + q;
+      const handle = 'jpeg-q' + q.toString();
       const values: LossyImgData = {
         quality: q,
         filesize: buff.length,
-        filename: this.filename + '-q' + q + '.jpeg',
+        filename: (this.filename as string) + '-q' + q.toString() + '.jpeg',
       };
       manifest[handle] = values;
       images.set(handle, buff);
@@ -137,7 +134,7 @@ export default class ProcessImage {
     const pngBuffer = await this.toPNG();
     const png: LosslessImgData = {
       filesize: pngBuffer.length,
-      filename: this.filename + '.png',
+      filename: (this.filename as string) + '.png',
     };
     manifest['png'] = png;
     images.set('png', pngBuffer);
@@ -145,7 +142,6 @@ export default class ProcessImage {
     return [manifest, images];
   }
 
-  @debugDecorator()
   async toFormData(): Promise<[FormData, string]> {
     const formdata = new FormData();
 
@@ -159,7 +155,11 @@ export default class ProcessImage {
 
     for (const curr in data) {
       const type = curr.split('-')[0];
-      formdata.append(curr, `data:image/${type};base64,` + images.get(curr)?.toString('base64'), data[curr].filename);
+      formdata.append(
+        curr,
+        `data:image/${type};base64,` + (images.get(curr)?.toString('base64') as string),
+        data[curr].filename,
+      );
     }
 
     return [formdata, formdata.getBoundary()];

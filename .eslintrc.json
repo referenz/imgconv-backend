@@ -11,16 +11,15 @@
     ],
     "extends": [
         "eslint:recommended",
-        "plugin:@typescript-eslint/eslint-recommended",
         "plugin:@typescript-eslint/recommended",
+        "plugin:@typescript-eslint/recommended-requiring-type-checking",
         "plugin:prettier/recommended"
     ],
     "rules": {
+        "@typescript-eslint/naming-convention": 1,
         "prettier/prettier": 1
     },
     "parserOptions": {
-        "project": "./tsconfig.json",
-        /* Kann ggf. raus */
-        "ecmaVersion": "latest"
+        "project": "./tsconfig.json"
     }
 }

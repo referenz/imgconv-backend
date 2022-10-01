@@ -15,7 +15,7 @@
   "devDependencies": {
     "@types/busboy": "^1.5.0",
     "@types/node": "^18.7.14",
-    "@types/sharp": "^0.30.5",
+    "@types/sharp": "^0.31.0",
     "@typescript-eslint/eslint-plugin": "^5.36.1",
     "@typescript-eslint/parser": "^5.36.1",
     "eslint": "^8.23.0",
