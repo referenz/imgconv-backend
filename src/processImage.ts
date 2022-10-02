@@ -1,8 +1,8 @@
-import { createClient } from 'redis';
 import { randomUUID } from 'crypto';
 import sharp from 'sharp';
 import FormData from 'form-data';
 import type { IRedisValue, Format, IFileInfo } from './types.js';
+import { getRedisClient } from './redisProvider.js';
 
 type Base64 = string;
 /*
@@ -16,7 +16,7 @@ export default class ProcessImage {
     if (!(type in sharp.format) || sharp.format[type as keyof sharp.FormatEnum].input.buffer === false)
       return [false, JSON.stringify({ error: 'Kann Dateiformat nicht verarbeiten' })];
 
-    const client = createClient();
+    const client = getRedisClient();
     client.on('error', err => console.log('Redis Client Error', err));
     await client.connect();
     const key = randomUUID();
@@ -33,31 +33,39 @@ export default class ProcessImage {
 
   static async produceImage(key: string, format: Format, desiredQuality?: number): Promise<[FormData, string]> {
     const originalImage = await this.getImageFromRedis(key);
-    const [convertedImage, quality] = await this.makeConvertedImage(originalImage.buffer, format, desiredQuality);
 
-    const manifest: IFileInfo = {
-      filename: await this.newFileName(originalImage.filename, convertedImage),
-      filesize: await this.getFileSize(convertedImage),
-      quality,
-    };
+    try {
+      const [convertedImage, quality] = await this.makeConvertedImage(originalImage.buffer, format, desiredQuality);
 
-    const formdata = new FormData();
-    formdata.append('manifest', JSON.stringify(manifest));
-    formdata.append(
-      'file',
-      `data:image/${await this.getFileType(convertedImage)};base64,${convertedImage.toString('base64')}`,
-      manifest.filename,
-    );
+      const manifest: IFileInfo = {
+        filename: await this.newFileName(originalImage.filename, convertedImage),
+        filesize: await this.getFileSize(convertedImage),
+        quality,
+      };
 
-    return [formdata, formdata.getBoundary()];
+      const formdata = new FormData();
+      formdata.append('manifest', JSON.stringify(manifest));
+      formdata.append(
+        'file',
+        `data:image/${await this.getFileType(convertedImage)};base64,${convertedImage.toString('base64')}`,
+        manifest.filename,
+      );
+      return [formdata, formdata.getBoundary()];
+    } catch (e) {
+      console.log('Behandelter Fehler: ', (e as Error).message);
+      throw new Error(e as string);
+    }
   }
 
   // Ab Typescript 4.9 vielleicht mit Rückgabewert `Promise<IRedisValue>`
   static async getImageFromRedis(key: string) {
-    const client = createClient();
+    const client = getRedisClient();
+
+    //const client = createClient();
     // todo: Fehlerbehandlungsfunktion die dasselbe Return wie produceImage()?
     client.on('error', err => console.log('Redis Client Error', err));
     await client.connect();
+
     // todo: Fehlerbehandlungsfunktion die dasselbe Return wie produceImage()?
     if (!(await client.exists(key))) throw new Error('Redis-Datenbankeintrag existiert nicht');
 
@@ -71,7 +79,8 @@ export default class ProcessImage {
     if (format === 'png') return [await ProcessImage.toPNG(original)];
     else if (format === 'webp-nearlossless') return [await ProcessImage.toWebPnearLossless(original)];
     else if (format === 'webp') return [await ProcessImage.toWebP(original, quality), quality];
-    else return [await ProcessImage.toJPEG(original, quality), quality];
+    else if (format === 'jpeg') return [await ProcessImage.toJPEG(original, quality), quality];
+    else throw new Error('falsches Format angefordert: ', format);
   }
 
   static async toPNG(original: Base64): Promise<Buffer> {

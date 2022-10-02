@@ -22,7 +22,7 @@ export async function handleRequest(ctx: Koa.ParameterizedContext) {
     formdata.pipe(ctx.res);
   } catch (e) {
     // todo: Fehlermeldung an den Browser schicken
-    console.log('Behandelter Fehler: ', e);
+    console.log('Behandelter Fehler: ', (e as Error).message);
     ctx.status = 500;
   }
 }
