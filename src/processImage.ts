@@ -1,167 +1,116 @@
+import { createClient } from 'redis';
+import { randomUUID } from 'crypto';
 import sharp from 'sharp';
 import FormData from 'form-data';
-import { LosslessImgData, LossyImgData, Manifest } from './types.js';
+import type { IRedisValue, Format, IFileInfo } from './types.js';
+
+type Base64 = string;
+/*
+type Base64<imageType extends string> = `data:image/${imageType};base64${string}`
+const base64: Base64<'png'> = 'data:image/png;base64test...'
+*/
 
 export default class ProcessImage {
-  private buffer?: Buffer;
-  private filename?: string;
-  private error?: string;
-  private qualities = [70, 75, 80, 85];
-
-  private constructor(args: { buffer: Buffer; filename: string } | { error: string }) {
-    if ('buffer' in args) {
-      this.buffer = args.buffer;
-      this.filename = args.filename;
-    }
-    if ('error' in args) this.error = args.error;
-  }
-
-  static fromBuffer(buffer: Buffer, filename: string, filetype: string): ProcessImage {
+  static async fromBuffer(buffer: Buffer, filename: string, filetype: string): Promise<[boolean, string]> {
     const type = filetype.split('/')[1];
     if (!(type in sharp.format) || sharp.format[type as keyof sharp.FormatEnum].input.buffer === false)
-      return new ProcessImage({ error: 'Kann Dateiformat nicht verarbeiten' });
+      return [false, JSON.stringify({ error: 'Kann Dateiformat nicht verarbeiten' })];
 
-    return new ProcessImage({
-      buffer: buffer,
-      filename: filename.split('.')[0],
+    const client = createClient();
+    client.on('error', err => console.log('Redis Client Error', err));
+    await client.connect();
+    const key = randomUUID();
+
+    // nach Wechsel auf Typescript 4.9 hier `satisfies IRedisValue` ergänzen?
+    await client.hSet(key, {
+      filename,
+      filetype,
+      buffer: buffer.toString('base64'),
     });
+    await client.expire(key, 180);
+    return [true, key];
   }
 
-  /* fromFile(_path) {} */
-  /* fromURL(_url) {} */
+  static async produceImage(key: string, format: Format, desiredQuality?: number): Promise<[FormData, string]> {
+    const originalImage = await this.getImageFromRedis(key);
+    const [convertedImage, quality] = await this.makeConvertedImage(originalImage.buffer, format, desiredQuality);
 
-  private toWebP(quality: number): Promise<Buffer> {
-    if (quality == undefined) return sharp(this.buffer).webp().toBuffer();
-    else return sharp(this.buffer).webp({ quality: quality }).toBuffer();
+    const manifest: IFileInfo = {
+      filename: await this.newFileName(originalImage.filename, convertedImage),
+      filesize: await this.getFileSize(convertedImage),
+      quality,
+    };
+
+    const formdata = new FormData();
+    formdata.append('manifest', JSON.stringify(manifest));
+    formdata.append(
+      'file',
+      `data:image/${await this.getFileType(convertedImage)};base64,${convertedImage.toString('base64')}`,
+      manifest.filename,
+    );
+
+    return [formdata, formdata.getBoundary()];
   }
 
-  private async makeWebPs(): Promise<Map<number, Buffer>> {
-    const returnobj = new Map<number, Buffer>();
-    for (const q of this.qualities) {
-      returnobj.set(q, await this.toWebP(q));
-    }
-    return returnobj;
+  // Ab Typescript 4.9 vielleicht mit Rückgabewert `Promise<IRedisValue>`
+  static async getImageFromRedis(key: string) {
+    const client = createClient();
+    // todo: Fehlerbehandlungsfunktion die dasselbe Return wie produceImage()?
+    client.on('error', err => console.log('Redis Client Error', err));
+    await client.connect();
+    // todo: Fehlerbehandlungsfunktion die dasselbe Return wie produceImage()?
+    if (!(await client.exists(key))) throw new Error('Redis-Datenbankeintrag existiert nicht');
+
+    // Hier vielleicht ab TS 4.9 `satisfies IRedisValue`?
+    return await client.hGetAll(key);
   }
 
-  private async toJPEG(quality: number): Promise<Buffer> {
-    const encodedJPEG = await sharp(this.buffer)
+  static async makeConvertedImage(original: Base64, format: Format, quality?: number): Promise<[Buffer, number?]> {
+    quality ??= 85;
+
+    if (format === 'png') return [await ProcessImage.toPNG(original)];
+    else if (format === 'webp-nearlossless') return [await ProcessImage.toWebPnearLossless(original)];
+    else if (format === 'webp') return [await ProcessImage.toWebP(original, quality), quality];
+    else return [await ProcessImage.toJPEG(original, quality), quality];
+  }
+
+  static async toPNG(original: Base64): Promise<Buffer> {
+    return await sharp(Buffer.from(original, 'base64'))
+      .png({ adaptiveFiltering: true, palette: true, compressionLevel: 9, effort: 8 })
+      .toBuffer();
+  }
+
+  static async toWebPnearLossless(original: Base64): Promise<Buffer> {
+    return await sharp(Buffer.from(original, 'base64')).webp({ nearLossless: true }).toBuffer();
+  }
+
+  static async toJPEG(original: Base64, quality?: number): Promise<Buffer> {
+    return await sharp(Buffer.from(original, 'base64'))
       .jpeg({
-        quality: quality,
+        quality,
         quantisationTable: 3,
         optimiseScans: true,
         mozjpeg: true,
         progressive: true,
       })
       .toBuffer();
-    return encodedJPEG;
   }
 
-  private async makeJPEGs(): Promise<Map<number, Buffer>> {
-    const returnobj = new Map<number, Buffer>();
-    for (const q of this.qualities) {
-      returnobj.set(q, await this.toJPEG(q));
-    }
-    return returnobj;
+  static async toWebP(original: Base64, quality?: number): Promise<Buffer> {
+    return sharp(Buffer.from(original, 'base64')).webp({ quality }).toBuffer();
   }
 
-  /*
-    private async toPNG(): Promise<Buffer> {
-        const encode = await import('@wasm-codecs/oxipng');
-        return encode.default(await sharp(this.buffer).png().toBuffer());
-    }
-    */
-
-  private async toPNG(): Promise<Buffer> {
-    return await sharp(this.buffer)
-      .png({ adaptiveFiltering: true, palette: true, compressionLevel: 9, effort: 8 })
-      .toBuffer();
-  }
-
-  private async getFiletype(): Promise<string> {
-    const meta = await sharp(this.buffer).metadata();
-    return meta.format as string;
-  }
-
-  private async getFilesize(): Promise<number> {
-    const meta = await sharp(this.buffer).metadata();
+  static async getFileSize(buffer: Buffer): Promise<number> {
+    const meta = await sharp(buffer).metadata();
     return meta.size as number;
   }
 
-  private async createImages(): Promise<[Manifest, Map<string, Buffer>]> {
-    const images = new Map<string, Buffer>();
-    const manifest: Manifest = {};
-
-    manifest['inputfile'] = {
-      filesize: await this.getFilesize(),
-      filename: this.filename as string,
-      filetype: await this.getFiletype(),
-    };
-
-    // WebP
-    for (const [q, buff] of await this.makeWebPs()) {
-      const handle = 'webp-q' + q.toString();
-      const values: LossyImgData = {
-        quality: q,
-        filesize: buff.length,
-        filename: (this.filename as string) + '-q' + q.toString() + '.webp',
-      };
-      manifest[handle] = values;
-      images.set(handle, buff);
-    }
-
-    // WebP nearlossless
-    const webpLosslessbuffer = await sharp(this.buffer).webp({ nearLossless: true }).toBuffer();
-    const webpLossless: LosslessImgData = {
-      filesize: webpLosslessbuffer.length,
-      filename: (this.filename as string) + '-nearLossless.webp',
-    };
-    manifest['webp-nearLossless'] = webpLossless;
-    images.set('webp-nearLossless', webpLosslessbuffer);
-
-    // JPEG
-    for (const [q, buff] of await this.makeJPEGs()) {
-      const handle = 'jpeg-q' + q.toString();
-      const values: LossyImgData = {
-        quality: q,
-        filesize: buff.length,
-        filename: (this.filename as string) + '-q' + q.toString() + '.jpeg',
-      };
-      manifest[handle] = values;
-      images.set(handle, buff);
-    }
-
-    // PNG
-    const pngBuffer = await this.toPNG();
-    const png: LosslessImgData = {
-      filesize: pngBuffer.length,
-      filename: (this.filename as string) + '.png',
-    };
-    manifest['png'] = png;
-    images.set('png', pngBuffer);
-
-    return [manifest, images];
+  static async getFileType(buffer: Buffer): Promise<string> {
+    const meta = await sharp(buffer).metadata();
+    return meta.format as string;
   }
 
-  async toFormData(): Promise<[FormData, string]> {
-    const formdata = new FormData();
-
-    if (this.error) {
-      formdata.append('error', this.error);
-      return [formdata, formdata.getBoundary()];
-    }
-
-    const [data, images] = await this.createImages();
-    formdata.append('manifest', JSON.stringify(data));
-
-    for (const curr in data) {
-      const type = curr.split('-')[0];
-      formdata.append(
-        curr,
-        `data:image/${type};base64,` + (images.get(curr)?.toString('base64') as string),
-        data[curr].filename,
-      );
-    }
-
-    return [formdata, formdata.getBoundary()];
+  static async newFileName(originalFilename: string, convertedImage: Buffer) {
+    return originalFilename.split('.')[0] + '.' + (await this.getFileType(convertedImage));
   }
 }
