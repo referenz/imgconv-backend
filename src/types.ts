@@ -1,15 +1,14 @@
-interface IFileInfo {
+export interface IRedisValue {
+  filename: string;
+  filetype: string;
+  buffer: string;
+}
+
+export const allowedFormats = ['webp', 'jpeg', 'png', 'webp-nearlossless'] as const;
+export type Format = typeof allowedFormats[number];
+
+export interface IFileInfo {
   filename: string;
   filesize: number;
+  quality?: number;
 }
-export type InputData = IFileInfo & {
-  filetype: string;
-};
-
-export type LossyImgData = IFileInfo & {
-  quality: number;
-};
-
-export type LosslessImgData = IFileInfo;
-
-export type Manifest = Record<string, IFileInfo | InputData | LossyImgData>;
