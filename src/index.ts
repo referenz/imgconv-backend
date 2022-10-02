@@ -12,8 +12,8 @@ const upload = multer();
 const baseUrl = process.env.NODE_ENV === 'development' ? '' : '/ImgConv/backend';
 
 router.get(`${baseUrl}/`, ctx => (ctx.body = 'ImgConv-Backend'));
-router.post('/storeimage', upload.single('datei'), handleUpload);
-router.get('/:uuid/:format/:quality?', handleRequest);
+router.post(`${baseUrl}/storeimage`, upload.single('datei'), handleUpload);
+router.get(`${baseUrl}/:uuid/:format/:quality?`, handleRequest);
 
 app.use(cors());
 app.use(router.routes());
