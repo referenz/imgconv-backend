@@ -9,7 +9,7 @@ const app = new Koa();
 const router = new Router();
 const upload = multer();
 
-const baseUrl = process.env.NODE_ENV === 'development' ? '' : '/ImgConv/backend';
+const baseUrl = process.env.NODE_ENV === 'development' ? '' : '/imgconv-backend';
 
 router.get(`${baseUrl}/`, ctx => (ctx.body = 'ImgConv-Backend'));
 router.post(`${baseUrl}/storeimage`, upload.single('datei'), handleUpload);

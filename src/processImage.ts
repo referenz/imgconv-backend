@@ -10,116 +10,115 @@ type Base64<imageType extends string> = `data:image/${imageType};base64${string}
 const base64: Base64<'png'> = 'data:image/png;base64test...'
 */
 
-export default class ProcessImage {
-  static async fromBuffer(buffer: Buffer, filename: string, filetype: string): Promise<[boolean, string]> {
-    const type = filetype.split('/')[1];
-    if (!(type in sharp.format) || sharp.format[type as keyof sharp.FormatEnum].input.buffer === false)
-      return [false, JSON.stringify({ error: 'Kann Dateiformat nicht verarbeiten' })];
+export async function fromBuffer(buffer: Buffer, filename: string, filetype: string): Promise<[boolean, string]> {
+  const type = filetype.split('/')[1];
+  if (!(type in sharp.format) || !sharp.format[type as keyof sharp.FormatEnum].input.buffer)
+    return [false, JSON.stringify({ error: 'Kann Dateiformat nicht verarbeiten' })];
 
-    const client = getRedisClient();
-    client.on('error', err => console.log('Redis Client Error', err));
-    await client.connect();
-    const key = randomUUID();
+  const client = getRedisClient();
+  client.on('error', err => console.log('Redis Client Error', err));
+  await client.connect();
+  const key = randomUUID();
 
-    // nach Wechsel auf Typescript 4.9 hier `satisfies IRedisValue` ergänzen?
-    await client.hSet(key, {
-      filename,
-      filetype,
-      buffer: buffer.toString('base64'),
-    });
-    await client.expire(key, 180);
-    return [true, key];
+  // nach Wechsel auf Typescript 4.9 hier `satisfies IRedisValue` ergänzen?
+  await client.hSet(key, {
+    filename,
+    filetype,
+    buffer: buffer.toString('base64'),
+  });
+  await client.expire(key, 180);
+  await client.quit();
+  return [true, key];
+}
+
+export async function produceImage(key: string, format: Format, desiredQuality?: number): Promise<[FormData, string]> {
+  const originalImage = await getImageFromRedis(key);
+
+  try {
+    const [convertedImage, quality] = await makeConvertedImage(originalImage.buffer, format, desiredQuality);
+
+    const manifest: IFileInfo = {
+      filename: await newFileName(originalImage.filename, convertedImage),
+      filesize: await getFileSize(convertedImage),
+      quality,
+    };
+
+    const formdata = new FormData();
+    formdata.append('manifest', JSON.stringify(manifest));
+    formdata.append(
+      'file',
+      `data:image/${await getFileType(convertedImage)};base64,${convertedImage.toString('base64')}`,
+      manifest.filename,
+    );
+    return [formdata, formdata.getBoundary()];
+  } catch (e) {
+    console.log('Behandelter Fehler: ', (e as Error).message);
+    throw new Error(e as string);
   }
+}
 
-  static async produceImage(key: string, format: Format, desiredQuality?: number): Promise<[FormData, string]> {
-    const originalImage = await this.getImageFromRedis(key);
+// Ab Typescript 4.9 vielleicht mit Rückgabewert `Promise<IRedisValue>`
+async function getImageFromRedis(key: string) {
+  const client = getRedisClient();
 
-    try {
-      const [convertedImage, quality] = await this.makeConvertedImage(originalImage.buffer, format, desiredQuality);
+  //const client = createClient();
+  // todo: Fehlerbehandlungsfunktion die dasselbe Return wie produceImage()?
+  client.on('error', err => console.log('Redis Client Error', err));
+  await client.connect();
 
-      const manifest: IFileInfo = {
-        filename: await this.newFileName(originalImage.filename, convertedImage),
-        filesize: await this.getFileSize(convertedImage),
-        quality,
-      };
+  // todo: Fehlerbehandlungsfunktion die dasselbe Return wie produceImage()?
+  if (!(await client.exists(key))) throw new Error('Redis-Datenbankeintrag existiert nicht');
 
-      const formdata = new FormData();
-      formdata.append('manifest', JSON.stringify(manifest));
-      formdata.append(
-        'file',
-        `data:image/${await this.getFileType(convertedImage)};base64,${convertedImage.toString('base64')}`,
-        manifest.filename,
-      );
-      return [formdata, formdata.getBoundary()];
-    } catch (e) {
-      console.log('Behandelter Fehler: ', (e as Error).message);
-      throw new Error(e as string);
-    }
-  }
+  // Hier vielleicht ab TS 4.9 `satisfies IRedisValue`?
+  return await client.hGetAll(key);
+}
 
-  // Ab Typescript 4.9 vielleicht mit Rückgabewert `Promise<IRedisValue>`
-  static async getImageFromRedis(key: string) {
-    const client = getRedisClient();
+async function makeConvertedImage(original: Base64, format: Format, quality?: number): Promise<[Buffer, number?]> {
+  quality ??= 85;
 
-    //const client = createClient();
-    // todo: Fehlerbehandlungsfunktion die dasselbe Return wie produceImage()?
-    client.on('error', err => console.log('Redis Client Error', err));
-    await client.connect();
+  if (format === 'png') return [await toPNG(original)];
+  else if (format === 'webp-nearlossless') return [await toWebPnearLossless(original)];
+  else if (format === 'webp') return [await toWebP(original, quality), quality];
+  /* format === 'jpeg' */ else return [await toJPEG(original, quality), quality];
+  //else throw new Error('falsches Format angefordert: ', format);
+}
 
-    // todo: Fehlerbehandlungsfunktion die dasselbe Return wie produceImage()?
-    if (!(await client.exists(key))) throw new Error('Redis-Datenbankeintrag existiert nicht');
+async function toPNG(original: Base64): Promise<Buffer> {
+  return await sharp(Buffer.from(original, 'base64'))
+    .png({ adaptiveFiltering: true, palette: true, compressionLevel: 9, effort: 8 })
+    .toBuffer();
+}
 
-    // Hier vielleicht ab TS 4.9 `satisfies IRedisValue`?
-    return await client.hGetAll(key);
-  }
+async function toWebPnearLossless(original: Base64): Promise<Buffer> {
+  return await sharp(Buffer.from(original, 'base64')).webp({ nearLossless: true }).toBuffer();
+}
 
-  static async makeConvertedImage(original: Base64, format: Format, quality?: number): Promise<[Buffer, number?]> {
-    quality ??= 85;
+async function toJPEG(original: Base64, quality?: number): Promise<Buffer> {
+  return await sharp(Buffer.from(original, 'base64'))
+    .jpeg({
+      quality,
+      quantisationTable: 3,
+      optimiseScans: true,
+      mozjpeg: true,
+      progressive: true,
+    })
+    .toBuffer();
+}
 
-    if (format === 'png') return [await ProcessImage.toPNG(original)];
-    else if (format === 'webp-nearlossless') return [await ProcessImage.toWebPnearLossless(original)];
-    else if (format === 'webp') return [await ProcessImage.toWebP(original, quality), quality];
-    else if (format === 'jpeg') return [await ProcessImage.toJPEG(original, quality), quality];
-    else throw new Error('falsches Format angefordert: ', format);
-  }
+async function toWebP(original: Base64, quality?: number): Promise<Buffer> {
+  return sharp(Buffer.from(original, 'base64')).webp({ quality }).toBuffer();
+}
 
-  static async toPNG(original: Base64): Promise<Buffer> {
-    return await sharp(Buffer.from(original, 'base64'))
-      .png({ adaptiveFiltering: true, palette: true, compressionLevel: 9, effort: 8 })
-      .toBuffer();
-  }
+async function getFileSize(buffer: Buffer): Promise<number> {
+  const meta = await sharp(buffer).metadata();
+  return meta.size ?? 0;
+}
 
-  static async toWebPnearLossless(original: Base64): Promise<Buffer> {
-    return await sharp(Buffer.from(original, 'base64')).webp({ nearLossless: true }).toBuffer();
-  }
+async function getFileType(buffer: Buffer): Promise<string> {
+  const meta = await sharp(buffer).metadata();
+  return meta.format as string;
+}
 
-  static async toJPEG(original: Base64, quality?: number): Promise<Buffer> {
-    return await sharp(Buffer.from(original, 'base64'))
-      .jpeg({
-        quality,
-        quantisationTable: 3,
-        optimiseScans: true,
-        mozjpeg: true,
-        progressive: true,
-      })
-      .toBuffer();
-  }
-
-  static async toWebP(original: Base64, quality?: number): Promise<Buffer> {
-    return sharp(Buffer.from(original, 'base64')).webp({ quality }).toBuffer();
-  }
-
-  static async getFileSize(buffer: Buffer): Promise<number> {
-    const meta = await sharp(buffer).metadata();
-    return meta.size as number;
-  }
-
-  static async getFileType(buffer: Buffer): Promise<string> {
-    const meta = await sharp(buffer).metadata();
-    return meta.format as string;
-  }
-
-  static async newFileName(originalFilename: string, convertedImage: Buffer) {
-    return originalFilename.split('.')[0] + '.' + (await this.getFileType(convertedImage));
-  }
+async function newFileName(originalFilename: string, convertedImage: Buffer) {
+  return originalFilename.split('.')[0] + '.' + (await getFileType(convertedImage));
 }

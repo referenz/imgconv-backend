@@ -1,5 +1,5 @@
 import Koa from 'koa';
-import ProcessImage from './processImage.js';
+import { produceImage } from './processImage.js';
 import { allowedFormats, Format } from './types.js';
 
 export async function handleRequest(ctx: Koa.ParameterizedContext) {
@@ -16,7 +16,7 @@ export async function handleRequest(ctx: Koa.ParameterizedContext) {
   }
 
   try {
-    const [formdata, boundary] = await ProcessImage.produceImage(uuid, format, desiredQuality);
+    const [formdata, boundary] = await produceImage(uuid, format, desiredQuality);
     ctx.response.set('Content-Type', `multipart/form-data; boundary=${boundary}`);
     ctx.status = 200;
     formdata.pipe(ctx.res);
