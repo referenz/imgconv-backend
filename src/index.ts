@@ -5,15 +5,15 @@ import multer from '@koa/multer';
 import { handleRequest } from './handleRequest.js';
 import { handleUpload } from './handleUpload.js';
 
-const app = new Koa();
-const router = new Router();
-const upload = multer();
-
 const baseUrl = process.env.NODE_ENV === 'development' ? '' : '/imgconv-backend';
 
-router.get(`${baseUrl}/`, ctx => (ctx.body = 'ImgConv-Backend'));
-router.post(`${baseUrl}/storeimage`, upload.single('datei'), handleUpload);
-router.get(`${baseUrl}/:uuid/:format/:quality?`, handleRequest);
+const app = new Koa();
+const router = new Router({ prefix: baseUrl });
+const upload = multer();
+
+router.get('/', ctx => (ctx.body = 'ImgConv-Backend'));
+router.post('/storeimage', upload.single('datei'), handleUpload);
+router.get('/:uuid/:format/:quality?', handleRequest);
 
 app.use(cors());
 app.use(router.routes());
