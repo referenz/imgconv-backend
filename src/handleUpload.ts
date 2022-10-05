@@ -10,7 +10,7 @@ export async function handleUpload(ctx: Koa.ParameterizedContext) {
       handler: key,
     });
   } catch (e) {
-    console.log('Behandelter Fehler', (e as Error).message);
+    console.log('Behandelter Fehler: ', (e as Error).message);
     ctx.body = JSON.stringify({ success: false, error: e });
   }
 }

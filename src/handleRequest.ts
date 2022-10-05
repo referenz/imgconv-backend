@@ -1,4 +1,5 @@
 import Koa from 'koa';
+import FormData from 'form-data';
 import { produceImage } from './processImage.js';
 import { allowedFormats, Format } from './types.js';
 
@@ -6,7 +7,12 @@ export async function handleRequest(ctx: Koa.ParameterizedContext) {
   const { uuid, format, quality } = ctx.params as { uuid: string; format: Format; quality: string };
 
   if (!allowedFormats.includes(format)) {
-    // todo: Was passiert wenn ein falsches Format angefordert wird?
+    const formdata = new FormData();
+    formdata.append('error', JSON.stringify({ message: 'Ungültiges Format angefordert' }));
+    ctx.response.set('Content-Type', `multipart/form-data; boundary=${formdata.getBoundary()}`);
+    ctx.status = 200;
+    formdata.pipe(ctx.res);
+    return;
   }
 
   let desiredQuality: number | undefined = parseInt(quality);
