@@ -16,7 +16,9 @@ export async function fromBuffer(buffer: Buffer, filename: string, filetype: str
     return [false, JSON.stringify({ error: 'Kann Dateiformat nicht verarbeiten' })];
 
   const client = getRedisClient();
-  client.on('error', err => console.log('Redis Client Error', err));
+  client.on('error', err => {
+    console.log('Redis Client Error', err);
+  });
   await client.connect();
   const key = randomUUID();
 
@@ -57,20 +59,20 @@ export async function produceImage(key: string, format: Format, desiredQuality?:
   }
 }
 
-// Ab Typescript 4.9 vielleicht mit Rückgabewert `Promise<IRedisValue>`
-async function getImageFromRedis(key: string) {
+async function getImageFromRedis(key: string): Promise<IRedisValue> {
   const client = getRedisClient();
 
-  //const client = createClient();
-  // todo: Fehlerbehandlungsfunktion die dasselbe Return wie produceImage()?
-  client.on('error', err => console.log('Redis Client Error', err));
+  // const client = createClient();
+  // todo: Fehlerbehandlungsfunktion dasselbe Return wie produceImage()?
+  client.on('error', err => {
+    console.log('Redis Client Error', err);
+  });
   await client.connect();
 
-  // todo: Fehlerbehandlungsfunktion die dasselbe Return wie produceImage()?
+  // todo: Fehlerbehandlungsfunktion dasselbe Return wie produceImage()?
   if (!(await client.exists(key))) throw new Error('Redis-Datenbankeintrag existiert nicht');
 
-  // Hier vielleicht ab TS 4.9 `satisfies IRedisValue`?
-  return await client.hGetAll(key);
+  return (await client.hGetAll(key)) as unknown as IRedisValue;
 }
 
 async function makeConvertedImage(original: Base64, format: Format, quality?: number): Promise<[Buffer, number?]> {

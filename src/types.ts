@@ -5,7 +5,7 @@ export interface IRedisValue {
 }
 
 export const allowedFormats = ['webp', 'jpeg', 'png', 'webp-nearlossless'] as const;
-export type Format = typeof allowedFormats[number];
+export type Format = (typeof allowedFormats)[number];
 
 export interface IFileInfo {
   filename: string;
