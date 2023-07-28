@@ -1,6 +1,6 @@
 {
   "name": "imgconv-backend",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "",
   "main": "dist/index.js",
   "type": "module",
@@ -14,23 +14,20 @@
   "license": "MIT",
   "dependencies": {
     "@koa/cors": "^4.0.0",
-    "@koa/multer": "^3.0.2",
     "@koa/router": "^12.0.0",
-    "form-data": "^4.0.0",
     "koa": "^2.14.2",
-    "redis": "^4.6.7",
-    "sharp": "^0.32.4"
+    "sharp": "^0.32.4",
+    "socket.io": "^4.7.1"
   },
   "devDependencies": {
     "@types/koa": "^2.13.7",
     "@types/koa__cors": "^4.0.0",
-    "@types/koa__multer": "^2.0.4",
     "@types/koa__router": "^12.0.0",
     "@types/sharp": "^0.32.0",
     "@typescript-eslint/eslint-plugin": "^6.2.0",
     "@typescript-eslint/parser": "^6.2.0",
-    "eslint": "^8.45.0",
-    "eslint-config-prettier": "^8.8.0",
+    "eslint": "^8.46.0",
+    "eslint-config-prettier": "^8.9.0",
     "eslint-plugin-prettier": "^5.0.0",
     "prettier": "^3.0.0",
     "typescript": "^5.1.6"
