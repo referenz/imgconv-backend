@@ -9,20 +9,16 @@ const base64: Base64<'png'> = 'data:image/png;base64test...'
 export class ProcessImage {
   private originalImage: Buffer
   private originalFilename: string
-  private originalFiletype: string
-  private origginalFilezsize: number
 
   private error: string | undefined
 
-  constructor(buffer: Buffer, filename: string, filetype: string, filesize: number) {
+  constructor(buffer: Buffer, filename: string, filetype: string) {
     const type = filetype.split('/')[1]
     if (!(type in sharp.format) || !sharp.format[type as keyof sharp.FormatEnum].input.buffer)
       this.error = 'Kann Dateiformat nicht verarbeiten'
 
     this.originalImage = buffer
     this.originalFilename = filename
-    this.originalFiletype = filetype
-    this.origginalFilezsize = filesize
   }
 
   public hasError() {

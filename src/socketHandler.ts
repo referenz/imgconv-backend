@@ -16,7 +16,7 @@ export function socketHandler(socket: Socket) {
   let image: ProcessImage
 
   socket.on('upload', (data: Upload) => {
-    image = new ProcessImage(data.binary, data.filename, data.filetype, data.filesize)
+    image = new ProcessImage(data.binary, data.filename, data.filetype)
 
     if (image.hasError()) {
       socket.emit('error', image.getError())
