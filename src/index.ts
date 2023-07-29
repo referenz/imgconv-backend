@@ -14,6 +14,7 @@ const router = new Router({ prefix: baseUrl })
 // eslint-disable-next-line @typescript-eslint/no-misused-promises
 const httpServer = createServer(app.callback())
 const socket = new Server(httpServer, {
+  path: '/imgconv-backend/socket.io/',
   cors: {
     origin: ['http://localhost:8080', 'http://localhost:5173', 'http://0.0.0.0'],
   },
