@@ -1,5 +1,5 @@
-import sharp from 'sharp'
-import type { Format } from './types.js'
+import sharp from "sharp"
+import type { Format } from "./types.js"
 
 /*
 type Base64<imageType extends string> = `data:image/${imageType};base64${string}`
@@ -13,9 +13,12 @@ export class ProcessImage {
   private error: string | undefined
 
   constructor(buffer: Buffer, filename: string, filetype: string) {
-    const type = filetype.split('/')[1]
-    if (!(type in sharp.format) || !sharp.format[type as keyof sharp.FormatEnum].input.buffer)
-      this.error = 'Kann Dateiformat nicht verarbeiten'
+    const type = filetype.split("/")[1]
+    if (
+      !(type in sharp.format) ||
+      !sharp.format[type as keyof sharp.FormatEnum].input.buffer
+    )
+      this.error = "Kann Dateiformat nicht verarbeiten"
 
     this.originalImage = buffer
     this.originalFilename = filename
@@ -27,12 +30,14 @@ export class ProcessImage {
 
   public getError() {
     if (this.error !== undefined) return this.error
-    else throw new Error('no error')
   }
 
   public async produceImage(format: string, quality?: string) {
     try {
-      const convertedImage = await this.makeConvertedImage(format as Format, quality)
+      const convertedImage = await this.makeConvertedImage(
+        format as Format,
+        quality,
+      )
 
       return {
         filename: await this.newFileName(this.originalFilename, convertedImage),
@@ -42,28 +47,35 @@ export class ProcessImage {
       }
     } catch (e) {
       this.error = (e as Error).message
-      console.log('Behandelter Fehler: ', (e as Error).message)
+      console.log("Behandelter Fehler: ", (e as Error).message)
     }
   }
 
   private async makeConvertedImage(format: Format, argQuality?: string) {
-    const quality = parseInt(argQuality ?? '85')
+    const quality = Number.parseInt(argQuality ?? "85")
 
-    if (format === 'png') return await this.toPNG()
-    else if (format === 'webp-nearlossless') return await this.toWebPnearLossless()
-    else if (format === 'webp') return await this.toWebP(quality)
-    /* format === 'jpeg' */ else return await this.toJPEG(quality)
+    if (format === "png") return await this.toPNG()
+    if (format === "webp-nearlossless") return await this.toWebPnearLossless()
+    if (format === "webp") return await this.toWebP(quality)
+    /* format === 'jpeg' */ return await this.toJPEG(quality)
     //else throw new Error('falsches Format angefordert: ', format);
   }
 
   private async toPNG(): Promise<Buffer> {
     return await sharp(this.originalImage)
-      .png({ adaptiveFiltering: true, palette: true, compressionLevel: 9, effort: 8 })
+      .png({
+        adaptiveFiltering: true,
+        palette: true,
+        compressionLevel: 9,
+        effort: 8,
+      })
       .toBuffer()
   }
 
   private async toWebPnearLossless(): Promise<Buffer> {
-    return await sharp(this.originalImage).webp({ nearLossless: true }).toBuffer()
+    return await sharp(this.originalImage)
+      .webp({ nearLossless: true })
+      .toBuffer()
   }
 
   private async toJPEG(quality?: number): Promise<Buffer> {
@@ -93,6 +105,6 @@ export class ProcessImage {
   }
 
   private async newFileName(originalFilename: string, convertedImage: Buffer) {
-    return originalFilename.split('.')[0] + '.' + (await this.getFileType(convertedImage))
+    return `${originalFilename.split(".")[0]}.${await this.getFileType(convertedImage)}`
   }
 }

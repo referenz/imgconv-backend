@@ -5,5 +5,10 @@ export interface Upload {
   binary: Buffer
 }
 
-export const allowedFormats = ['webp', 'jpeg', 'png', 'webp-nearlossless'] as const
+export const allowedFormats = [
+  "webp",
+  "jpeg",
+  "png",
+  "webp-nearlossless",
+] as const
 export type Format = (typeof allowedFormats)[number]
